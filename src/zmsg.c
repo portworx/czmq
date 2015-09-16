@@ -104,6 +104,8 @@ zmsg_recv (void *source)
     while (true) {
         zframe_t *frame = zframe_recv (handle);
         if (!frame) {
+            if (errno == EINTR)
+                continue;
             zmsg_destroy (&self);
             break;              //  Interrupted or terminated
         }
@@ -139,8 +141,12 @@ zmsg_send (zmsg_t **self_p, void *dest)
         while (frame) {
             rc = zframe_send (&frame, handle,
                               zlist_size (self->frames) ? ZFRAME_MORE : 0);
-            if (rc != 0)
-                break;
+            if (rc != 0) {
+                if (errno == EINTR)
+                    continue;
+                else
+                    break;
+            }
             frame = (zframe_t *) zlist_pop (self->frames);
         }
         if (rc == 0)
